@@ -1,1 +1,407 @@
-<!DOCTYPE html> <html lang="fr"> <head> <meta charset="UTF-8"> <meta name="viewport" content="width=device-width, initial-scale=1.0"> <title>Luxe Agenda Ultime</title> <style> body { font-family: 'Inter', sans-serif; margin:0; padding:10px; background: linear-gradient(180deg,#f2f5fa,#dfe7f2); color:#1a1a1a; } h2{text-align:center;margin-bottom:15px;color:#2c2c54;text-shadow:0 1px 2px rgba(0,0,0,0.2);} .days-container{display:flex;overflow-x:auto;scroll-snap-type:x mandatory;-webkit-overflow-scrolling: touch;padding-bottom:10px;min-height:600px;} .day-column{display:flex;flex-direction:column;min-width:70px;margin-right:6px;scroll-snap-align:start;} .slot{height:22px;margin:1px 0;border-radius:4px;background-color:#c3e0ff;transition:0.2s ease;flex-shrink:0;position:relative;} .slot.selected{background: linear-gradient(90deg,#ffd700,#ffb700);border-radius:6px;box-shadow:0 0 6px rgba(255,215,0,0.6);} .slot.blocked{background-color: rgba(44,44,54,0.3);pointer-events:none;} .slot-label{position:absolute;left:6px;top:0;font-size:10px;color:#2c2c54;opacity:0;transition:0.15s ease;} .slot.show-label .slot-label{opacity:1;} button{margin-top:12px;padding:14px 28px;border:none;border-radius:24px;background: linear-gradient(135deg,#ffd700,#ffb700);color:#000;font-weight:700;font-size:17px;cursor:pointer;box-shadow:0 2px 6px rgba(0,0,0,0.3);transition: transform 0.1s;} button:active{transform: scale(0.97);} button:disabled{background-color:#cccccc;color:#fff;cursor:not-allowed;} </style> </head> <body> <h2>Ze agenda de réZervation by Lola</h2> <div class="days-container" id="agenda"></div> <button id="validateBtn" disabled>Valider</button> <script> const MINUTES_IN_DAY=24*60; let selected=null; let zoomLevel=1; const agendaEl=document.getElementById('agenda'); const timeline=[]; let startDayOffset=0; function addDay(dayOffset){ const dayColumn=document.createElement('div'); dayColumn.className='day-column'; const daySlots=[]; for(let m=0;m<MINUTES_IN_DAY;m++){ const slot=document.createElement('div'); slot.className='slot'; slot.dataset.day=dayOffset; slot.dataset.minute=m; const label=document.createElement('span'); label.className='slot-label'; if(m%15===0) label.textContent=`${String(Math.floor(m/60)).padStart(2,'0')}:${String(m%60).padStart(2,'0')}`; slot.appendChild(label); slot.addEventListener('click',()=>selectSlot(dayOffset,m)); dayColumn.appendChild(slot); daySlots.push({el:slot,blocked:false}); } timeline.push(daySlots); agendaEl.appendChild(dayColumn); } for(let i=0;i<3;i++) addDay(i); agendaEl.addEventListener('scroll',()=>{ const scrollRight=agendaEl.scrollLeft+agendaEl.clientWidth; if(scrollRight>=agendaEl.scrollWidth-100){ startDayOffset++; addDay(startDayOffset+2); }}); let initialDistance=null; agendaEl.addEventListener('touchmove',(e)=>{ if(e.touches.length===2){ const dist=Math.hypot(e.touches[0].pageX-e.touches[1].pageX,e.touches[0].pageY-e.touches[1].pageY); if(initialDistance===null) initialDistance=dist; const scale=dist/initialDistance; if(scale>1.2){ zoomLevel=2; showLabels(true);} if(scale<0.8){ zoomLevel=1; showLabels(false);} }}); agendaEl.addEventListener('touchend',()=>{initialDistance=null;}); function showLabels(show){ timeline.forEach(day=>{ day.forEach(slot=>{ if(show) slot.el.classList.add('show-label'); else slot.el.classList.remove('show-label'); }); });} function selectSlot(day,minute){ if(timeline[day][minute].blocked) return; if(selected){ const {day:d,minute:m}=selected; timeline[d][m].el.classList.remove('selected'); } timeline[day][minute].el.classList.add('selected'); selected={day,minute}; document.getElementById('validateBtn').disabled=false; let total=75,d=day,m=minute; while(total>0 && d<timeline.length){ const remainingToday=MINUTES_IN_DAY-m; const count=Math.min(total,remainingToday); for(let i=0;i<count;i++){ timeline[d][m+i].blocked=true; timeline[d][m+i].el.classList.add('blocked'); } total-=count; d+=1; m=0; }} document.getElementById('validateBtn').addEventListener('click',()=>{ if(!selected) return; const now=new Date(); const date=new Date(now.getFullYear(),now.getMonth(),now.getDate()+selected.day,Math.floor(selected.minute/60),selected.minute%60).toLocaleString(); const whatsappUrl=`https://wa.me/33605656753?text=${encodeURIComponent(`Bonjour,\nJe souhaite réserver le créneau du ${date}.\nMerci ✨`)}`; window.location.href=whatsappUrl; }); </script> </body> </html>
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Ze agenda de réZervation by Lola</title>
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary-bg: #1a1442;
+            --accent-gold: linear-gradient(135deg, #d4af37 0%, #f9e29c 50%, #b8860b 100%);
+            --accent-gold-solid: #d4af37;
+            --text-gold: #f9e29c;
+            --glass-bg: rgba(255, 255, 255, 0.15);
+            --glass-border: rgba(255, 255, 255, 0.2);
+            --column-bg: rgba(46, 38, 94, 0.8);
+            --selected-column-bg: #3a2e7a;
+        }
+
+        * {
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: var(--primary-bg);
+            background-image: radial-gradient(circle at top, #2e265e 0%, #1a1442 100%);
+            color: white;
+            height: 100vh;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Header */
+        header {
+            padding: 40px 20px 20px;
+            text-align: center;
+            background: linear-gradient(to bottom, rgba(26, 20, 66, 0.8), transparent);
+            position: relative;
+            z-index: 10;
+        }
+
+        header h1 {
+            font-family: 'Playfair Display', serif;
+            font-size: 22px;
+            margin: 0;
+            color: var(--text-gold);
+            font-weight: 400;
+        }
+
+        header h1 span {
+            font-weight: 700;
+        }
+
+        /* Curved transition below header */
+        .header-curve {
+            position: absolute;
+            bottom: -30px;
+            left: 0;
+            width: 100%;
+            height: 60px;
+            background: white;
+            border-radius: 50% 50% 0 0 / 100% 100% 0 0;
+            opacity: 0.1;
+            z-index: 1;
+        }
+
+        /* Date Tabs */
+        .date-tabs {
+            display: flex;
+            background: rgba(255, 255, 255, 0.9);
+            margin: 0 10px;
+            border-radius: 8px 8px 0 0;
+            overflow: hidden;
+            position: relative;
+            z-index: 5;
+        }
+
+        .date-tab {
+            flex: 1;
+            padding: 15px 5px;
+            text-align: center;
+            color: #5a5a8a;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .date-tab.active {
+            background: var(--selected-column-bg);
+            color: white;
+            border-radius: 8px 8px 0 0;
+            position: relative;
+        }
+
+        .date-tab.active::after {
+            content: '';
+            position: absolute;
+            bottom: 5px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 20px;
+            height: 2px;
+            background: white;
+            border-radius: 2px;
+        }
+
+        /* Timeline Container */
+        .timeline-container {
+            flex: 1;
+            display: flex;
+            overflow-y: auto;
+            margin: 0 10px;
+            background: rgba(255, 255, 255, 0.05);
+            position: relative;
+            scrollbar-width: none;
+        }
+        
+        .timeline-container::-webkit-scrollbar {
+            display: none;
+        }
+
+        .time-labels {
+            width: 80px;
+            display: flex;
+            flex-direction: column;
+            padding-top: 10px;
+        }
+
+        .time-label {
+            height: 60px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            color: rgba(255, 255, 255, 0.6);
+            border-bottom: 1px dashed rgba(255, 255, 255, 0.1);
+        }
+
+        .days-grid {
+            flex: 1;
+            display: flex;
+            position: relative;
+        }
+
+        .day-column {
+            flex: 1;
+            border-right: 1px solid rgba(255, 255, 255, 0.1);
+            position: relative;
+            background: var(--column-bg);
+        }
+
+        .day-column.active {
+            background: var(--selected-column-bg);
+        }
+
+        .slot {
+            height: 15px; /* 15 min intervals */
+            border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+            cursor: pointer;
+        }
+
+        .slot.hour-mark {
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        /* Selected Slot Highlight */
+        .selection-overlay {
+            position: absolute;
+            left: 0;
+            right: 0;
+            height: 40px;
+            background: var(--accent-gold);
+            border-radius: 8px;
+            box-shadow: 0 0 20px rgba(212, 175, 55, 0.4);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 20;
+            pointer-events: none;
+            transition: top 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            display: none;
+        }
+
+        .selection-overlay span {
+            color: white;
+            font-weight: 700;
+            font-size: 16px;
+            text-shadow: 0 1px 2px rgba(0,0,0,0.3);
+        }
+
+        .selection-glow {
+            position: absolute;
+            left: -80px;
+            right: 0;
+            height: 40px;
+            background: linear-gradient(90deg, rgba(249, 226, 156, 0.2) 0%, transparent 100%);
+            z-index: 15;
+            pointer-events: none;
+            display: none;
+        }
+
+        /* Bottom Sheet */
+        .bottom-sheet {
+            position: fixed;
+            bottom: 20px;
+            left: 20px;
+            right: 20px;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid var(--glass-border);
+            border-radius: 24px;
+            padding: 25px;
+            text-align: center;
+            z-index: 100;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+            transform: translateY(120%);
+            transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        .bottom-sheet.visible {
+            transform: translateY(0);
+        }
+
+        .selected-info {
+            font-size: 20px;
+            margin-bottom: 20px;
+            font-weight: 300;
+            letter-spacing: 1px;
+        }
+
+        .btn-validate {
+            width: 100%;
+            padding: 18px;
+            border: none;
+            border-radius: 50px;
+            background: var(--accent-gold);
+            color: white;
+            font-size: 22px;
+            font-weight: 600;
+            font-family: 'Playfair Display', serif;
+            cursor: pointer;
+            box-shadow: 0 4px 15px rgba(184, 134, 11, 0.4);
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .btn-validate:active {
+            transform: scale(0.96);
+        }
+
+        /* Blocked Slots */
+        .slot.blocked {
+            background: rgba(0,0,0,0.2);
+            pointer-events: none;
+        }
+
+        /* Helper for the infinite scroll simulation */
+        .days-wrapper {
+            display: flex;
+            flex: 1;
+        }
+    </style>
+</head>
+<body>
+
+<header>
+    <h1>Ze agenda de ré<span>Z</span>ervation by <span>Lola</span></h1>
+    <div class="header-curve"></div>
+</header>
+
+<div class="date-tabs" id="dateTabs">
+    <!-- Tabs will be injected here -->
+</div>
+
+<div class="timeline-container">
+    <div class="time-labels" id="timeLabels">
+        <!-- Labels will be injected here -->
+    </div>
+    <div class="days-grid" id="daysGrid">
+        <div class="selection-glow" id="selectionGlow"></div>
+        <div class="selection-overlay" id="selectionOverlay">
+            <span id="overlayTime">10:45</span>
+        </div>
+        <!-- Columns will be injected here -->
+    </div>
+</div>
+
+<div class="bottom-sheet" id="bottomSheet">
+    <div class="selected-info" id="selectedInfoText">11/04/2023 — 10:45</div>
+    <button class="btn-validate" id="btnValidate">Valider</button>
+</div>
+
+<script>
+    const dateTabs = document.getElementById('dateTabs');
+    const timeLabels = document.getElementById('timeLabels');
+    const daysGrid = document.getElementById('daysGrid');
+    const selectionOverlay = document.getElementById('selectionOverlay');
+    const selectionGlow = document.getElementById('selectionGlow');
+    const overlayTime = document.getElementById('overlayTime');
+    const bottomSheet = document.getElementById('bottomSheet');
+    const selectedInfoText = document.getElementById('selectedInfoText');
+    const btnValidate = document.getElementById('btnValidate');
+
+    const days = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'];
+    const months = ['Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin', 'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre'];
+    
+    let selectedDate = null;
+    let selectedTime = null;
+
+    // Initialize Dates (3 days starting from today)
+    const today = new Date();
+    const activeDates = [];
+    for (let i = 0; i < 3; i++) {
+        const d = new Date();
+        d.setDate(today.getDate() + i);
+        activeDates.push(d);
+    }
+
+    // Render Tabs
+    activeDates.forEach((date, index) => {
+        const tab = document.createElement('div');
+        tab.className = `date-tab ${index === 1 ? 'active' : ''}`;
+        tab.innerHTML = `${days[(date.getDay() + 6) % 7]} ${date.getDate()} ${months[date.getMonth()]}`;
+        tab.onclick = () => {
+            document.querySelectorAll('.date-tab').forEach(t => t.classList.remove('active'));
+            tab.classList.add('active');
+            document.querySelectorAll('.day-column').forEach((col, i) => {
+                col.classList.toggle('active', i === index);
+            });
+        };
+        dateTabs.appendChild(tab);
+    });
+
+    // Render Time Labels (10:00 to 22:00 for demo, like mockup)
+    for (let h = 10; h <= 22; h++) {
+        const label = document.createElement('div');
+        label.className = 'time-label';
+        label.textContent = `${h}:00`;
+        timeLabels.appendChild(label);
+    }
+
+    // Render Columns and Slots
+    activeDates.forEach((date, colIndex) => {
+        const column = document.createElement('div');
+        column.className = `day-column ${colIndex === 1 ? 'active' : ''}`;
+        
+        // Create slots for each 15 mins between 10:00 and 23:00
+        for (let m = 10 * 60; m < 23 * 60; m += 15) {
+            const slot = document.createElement('div');
+            const isHour = m % 60 === 0;
+            slot.className = `slot ${isHour ? 'hour-mark' : ''}`;
+            
+            const timeString = `${Math.floor(m / 60)}:${(m % 60).toString().padStart(2, '0')}`;
+            
+            slot.onclick = (e) => {
+                if (colIndex !== 1) return; // Only middle column active in mockup
+
+                const rect = column.getBoundingClientRect();
+                const containerRect = daysGrid.getBoundingClientRect();
+                const slotRect = slot.getBoundingClientRect();
+                const relativeTop = slotRect.top - containerRect.top;
+
+                // Position Overlay
+                selectionOverlay.style.display = 'flex';
+                selectionOverlay.style.top = `${relativeTop - 12}px`;
+                selectionOverlay.style.width = `${rect.width}px`;
+                selectionOverlay.style.left = `${rect.left - containerRect.left}px`;
+                
+                selectionGlow.style.display = 'block';
+                selectionGlow.style.top = `${relativeTop - 12}px`;
+
+                overlayTime.textContent = timeString;
+                
+                // Show Bottom Sheet
+                selectedDate = date;
+                selectedTime = timeString;
+                const dateStr = `${date.getDate().toString().padStart(2, '0')}/${(date.getMonth() + 1).toString().padStart(2, '0')}/${date.getFullYear()}`;
+                selectedInfoText.textContent = `${dateStr} — ${timeString}`;
+                bottomSheet.classList.add('visible');
+                
+                // Haptic feedback simulation
+                if (window.navigator.vibrate) window.navigator.vibrate(10);
+            };
+            column.appendChild(slot);
+        }
+        daysGrid.appendChild(column);
+    });
+
+    btnValidate.onclick = () => {
+        const dateStr = `${selectedDate.getDate().toString().padStart(2, '0')}/${(selectedDate.getMonth() + 1).toString().padStart(2, '0')}/${selectedDate.getFullYear()}`;
+        const message = `Bonjour,\nJe souhaite réserver le créneau du ${dateStr} à ${selectedTime}.\nMerci ✨`;
+        const whatsappUrl = `https://wa.me/33605656753?text=${encodeURIComponent(message)}`;
+        window.location.href = whatsappUrl;
+    };
+
+    // Initial scroll to center
+    document.querySelector('.timeline-container').scrollTop = 0;
+</script>
+
+</body>
+</html>
