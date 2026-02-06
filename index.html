@@ -1,1 +1,489 @@
-<!DOCTYPE html> <html lang="fr"> <head> <meta charset="UTF-8"> <meta name="viewport" content="width=device-width, initial-scale=1.0"> <title>Luxe Agenda Ultime</title> <style> body { font-family: 'Inter', sans-serif; margin:0; padding:10px; background: linear-gradient(180deg,#f2f5fa,#dfe7f2); color:#1a1a1a; } h2{text-align:center;margin-bottom:15px;color:#2c2c54;text-shadow:0 1px 2px rgba(0,0,0,0.2);} .days-container{display:flex;overflow-x:auto;scroll-snap-type:x mandatory;-webkit-overflow-scrolling: touch;padding-bottom:10px;min-height:600px;} .day-column{display:flex;flex-direction:column;min-width:70px;margin-right:6px;scroll-snap-align:start;} .slot{height:22px;margin:1px 0;border-radius:4px;background-color:#c3e0ff;transition:0.2s ease;flex-shrink:0;position:relative;} .slot.selected{background: linear-gradient(90deg,#ffd700,#ffb700);border-radius:6px;box-shadow:0 0 6px rgba(255,215,0,0.6);} .slot.blocked{background-color: rgba(44,44,54,0.3);pointer-events:none;} .slot-label{position:absolute;left:6px;top:0;font-size:10px;color:#2c2c54;opacity:0;transition:0.15s ease;} .slot.show-label .slot-label{opacity:1;} button{margin-top:12px;padding:14px 28px;border:none;border-radius:24px;background: linear-gradient(135deg,#ffd700,#ffb700);color:#000;font-weight:700;font-size:17px;cursor:pointer;box-shadow:0 2px 6px rgba(0,0,0,0.3);transition: transform 0.1s;} button:active{transform: scale(0.97);} button:disabled{background-color:#cccccc;color:#fff;cursor:not-allowed;} </style> </head> <body> <h2>Ze agenda de réZervation by Lola</h2> <div class="days-container" id="agenda"></div> <button id="validateBtn" disabled>Valider</button> <script> const MINUTES_IN_DAY=24*60; let selected=null; let zoomLevel=1; const agendaEl=document.getElementById('agenda'); const timeline=[]; let startDayOffset=0; function addDay(dayOffset){ const dayColumn=document.createElement('div'); dayColumn.className='day-column'; const daySlots=[]; for(let m=0;m<MINUTES_IN_DAY;m++){ const slot=document.createElement('div'); slot.className='slot'; slot.dataset.day=dayOffset; slot.dataset.minute=m; const label=document.createElement('span'); label.className='slot-label'; if(m%15===0) label.textContent=`${String(Math.floor(m/60)).padStart(2,'0')}:${String(m%60).padStart(2,'0')}`; slot.appendChild(label); slot.addEventListener('click',()=>selectSlot(dayOffset,m)); dayColumn.appendChild(slot); daySlots.push({el:slot,blocked:false}); } timeline.push(daySlots); agendaEl.appendChild(dayColumn); } for(let i=0;i<3;i++) addDay(i); agendaEl.addEventListener('scroll',()=>{ const scrollRight=agendaEl.scrollLeft+agendaEl.clientWidth; if(scrollRight>=agendaEl.scrollWidth-100){ startDayOffset++; addDay(startDayOffset+2); }}); let initialDistance=null; agendaEl.addEventListener('touchmove',(e)=>{ if(e.touches.length===2){ const dist=Math.hypot(e.touches[0].pageX-e.touches[1].pageX,e.touches[0].pageY-e.touches[1].pageY); if(initialDistance===null) initialDistance=dist; const scale=dist/initialDistance; if(scale>1.2){ zoomLevel=2; showLabels(true);} if(scale<0.8){ zoomLevel=1; showLabels(false);} }}); agendaEl.addEventListener('touchend',()=>{initialDistance=null;}); function showLabels(show){ timeline.forEach(day=>{ day.forEach(slot=>{ if(show) slot.el.classList.add('show-label'); else slot.el.classList.remove('show-label'); }); });} function selectSlot(day,minute){ if(timeline[day][minute].blocked) return; if(selected){ const {day:d,minute:m}=selected; timeline[d][m].el.classList.remove('selected'); } timeline[day][minute].el.classList.add('selected'); selected={day,minute}; document.getElementById('validateBtn').disabled=false; let total=75,d=day,m=minute; while(total>0 && d<timeline.length){ const remainingToday=MINUTES_IN_DAY-m; const count=Math.min(total,remainingToday); for(let i=0;i<count;i++){ timeline[d][m+i].blocked=true; timeline[d][m+i].el.classList.add('blocked'); } total-=count; d+=1; m=0; }} document.getElementById('validateBtn').addEventListener('click',()=>{ if(!selected) return; const now=new Date(); const date=new Date(now.getFullYear(),now.getMonth(),now.getDate()+selected.day,Math.floor(selected.minute/60),selected.minute%60).toLocaleString(); const whatsappUrl=`https://wa.me/33605656753?text=${encodeURIComponent(`Bonjour,\nJe souhaite réserver le créneau du ${date}.\nMerci ✨`)}`; window.location.href=whatsappUrl; }); </script> </body> </html>
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Ze agenda de réZervation by Lola</title>
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary-bg: #1a1442;
+            --accent-gold: linear-gradient(135deg, #d4af37 0%, #f9e29c 50%, #b8860b 100%);
+            --accent-gold-solid: #d4af37;
+            --text-gold: #f9e29c;
+            --glass-bg: rgba(255, 255, 255, 0.1);
+            --glass-border: rgba(255, 255, 255, 0.2);
+            --column-bg: rgba(46, 38, 94, 0.6);
+            --selected-column-bg: rgba(58, 46, 122, 0.8);
+        }
+
+        * {
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: var(--primary-bg);
+            background-image: radial-gradient(circle at top, #2e265e 0%, #1a1442 100%);
+            color: white;
+            height: 100vh;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Header */
+        header {
+            padding: 40px 20px 20px;
+            text-align: center;
+            background: linear-gradient(to bottom, rgba(26, 20, 66, 0.8), transparent);
+            position: relative;
+            z-index: 10;
+        }
+
+        header h1 {
+            font-family: 'Playfair Display', serif;
+            font-size: 22px;
+            margin: 0;
+            color: var(--text-gold);
+            font-weight: 400;
+        }
+
+        header h1 span {
+            font-weight: 700;
+        }
+
+        .header-curve {
+            position: absolute;
+            bottom: -30px;
+            left: 0;
+            width: 100%;
+            height: 60px;
+            background: white;
+            border-radius: 50% 50% 0 0 / 100% 100% 0 0;
+            opacity: 0.05;
+            z-index: 1;
+        }
+
+        /* Date Tabs */
+        .date-tabs {
+            display: flex;
+            background: rgba(255, 255, 255, 0.95);
+            margin: 0 10px;
+            border-radius: 8px 8px 0 0;
+            overflow-x: auto;
+            position: relative;
+            z-index: 5;
+            scrollbar-width: none;
+        }
+        .date-tabs::-webkit-scrollbar { display: none; }
+
+        .date-tab {
+            flex: 0 0 120px;
+            padding: 15px 5px;
+            text-align: center;
+            color: #5a5a8a;
+            font-size: 13px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .date-tab.active {
+            background: var(--selected-column-bg);
+            color: white;
+            border-radius: 8px 8px 0 0;
+        }
+
+        /* Timeline Container */
+        .timeline-container {
+            flex: 1;
+            display: flex;
+            overflow-x: auto;
+            overflow-y: hidden;
+            margin: 0 10px;
+            background: rgba(255, 255, 255, 0.05);
+            position: relative;
+            scrollbar-width: none;
+            scroll-snap-type: x mandatory;
+        }
+        .timeline-container::-webkit-scrollbar { display: none; }
+
+        .time-labels {
+            position: sticky;
+            left: 0;
+            width: 60px;
+            background: rgba(26, 20, 66, 0.9);
+            z-index: 20;
+            display: flex;
+            flex-direction: column;
+            border-right: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .time-label {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            color: rgba(255, 255, 255, 0.6);
+            border-bottom: 1px dashed rgba(255, 255, 255, 0.05);
+            flex-shrink: 0;
+        }
+
+        .days-grid {
+            display: flex;
+            flex-direction: row;
+            height: 100%;
+            overflow-y: auto;
+            scrollbar-width: none;
+        }
+        .days-grid::-webkit-scrollbar { display: none; }
+
+        .day-column {
+            width: 250px; /* Width of a day column */
+            border-right: 1px solid rgba(255, 255, 255, 0.1);
+            position: relative;
+            background: var(--column-bg);
+            scroll-snap-align: start;
+            flex-shrink: 0;
+        }
+
+        .day-column.active {
+            background: var(--selected-column-bg);
+        }
+
+        .slot {
+            width: 100%;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+            cursor: pointer;
+            position: relative;
+            transition: height 0.2s ease;
+        }
+
+        .slot.hour-mark {
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .slot.blocked {
+            background: rgba(0,0,0,0.3);
+            pointer-events: none;
+        }
+
+        /* Selected Slot Overlay */
+        .selection-overlay {
+            position: absolute;
+            left: 5px;
+            right: 5px;
+            background: var(--accent-gold);
+            border-radius: 6px;
+            box-shadow: 0 0 15px rgba(212, 175, 55, 0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 30;
+            pointer-events: none;
+            display: none;
+        }
+
+        .selection-overlay span {
+            color: white;
+            font-weight: 700;
+            font-size: 14px;
+            text-shadow: 0 1px 2px rgba(0,0,0,0.3);
+        }
+
+        /* Bottom Sheet */
+        .bottom-sheet {
+            position: fixed;
+            bottom: 20px;
+            left: 20px;
+            right: 20px;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(25px);
+            -webkit-backdrop-filter: blur(25px);
+            border: 1px solid var(--glass-border);
+            border-radius: 24px;
+            padding: 20px;
+            text-align: center;
+            z-index: 100;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+            transform: translateY(150%);
+            transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        .bottom-sheet.visible {
+            transform: translateY(0);
+        }
+
+        .selected-info {
+            font-size: 18px;
+            margin-bottom: 15px;
+            font-weight: 300;
+            letter-spacing: 1px;
+            color: white;
+        }
+
+        .btn-validate {
+            width: 100%;
+            padding: 15px;
+            border: none;
+            border-radius: 50px;
+            background: var(--accent-gold);
+            color: white;
+            font-size: 20px;
+            font-weight: 600;
+            font-family: 'Playfair Display', serif;
+            cursor: pointer;
+            box-shadow: 0 4px 15px rgba(184, 134, 11, 0.4);
+        }
+
+        .btn-validate:active { transform: scale(0.97); }
+
+        /* Zoom labels */
+        .slot-label-inner {
+            position: absolute;
+            left: 10px;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 10px;
+            color: rgba(255,255,255,0.4);
+            opacity: 0;
+            transition: opacity 0.2s;
+        }
+        .show-label .slot-label-inner { opacity: 1; }
+
+    </style>
+</head>
+<body>
+
+<header>
+    <h1>Ze agenda de ré<span>Z</span>ervation by <span>Lola</span></h1>
+    <div class="header-curve"></div>
+</header>
+
+<div class="date-tabs" id="dateTabs"></div>
+
+<div class="timeline-container" id="timelineContainer">
+    <div class="time-labels" id="timeLabels"></div>
+    <div class="days-grid" id="daysGrid">
+        <div class="selection-overlay" id="selectionOverlay">
+            <span id="overlayTime">10:45</span>
+        </div>
+    </div>
+</div>
+
+<div class="bottom-sheet" id="bottomSheet">
+    <div class="selected-info" id="selectedInfoText">Date — Heure</div>
+    <button class="btn-validate" id="btnValidate">Valider</button>
+</div>
+
+<script>
+    const MINUTES_IN_DAY = 24 * 60;
+    const dateTabs = document.getElementById('dateTabs');
+    const timeLabels = document.getElementById('timeLabels');
+    const daysGrid = document.getElementById('daysGrid');
+    const timelineContainer = document.getElementById('timelineContainer');
+    const selectionOverlay = document.getElementById('selectionOverlay');
+    const overlayTime = document.getElementById('overlayTime');
+    const bottomSheet = document.getElementById('bottomSheet');
+    const selectedInfoText = document.getElementById('selectedInfoText');
+    const btnValidate = document.getElementById('btnValidate');
+
+    let zoomLevel = 1; // 1 to 4
+    let slotHeight = 15; // base height for 15 mins
+    let timelineData = [];
+    let selectedSlot = null;
+    let daysCount = 0;
+
+    const daysNames = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'];
+    const monthsNames = ['Jan', 'Fév', 'Mar', 'Avr', 'Mai', 'Juin', 'Juil', 'Août', 'Sep', 'Oct', 'Nov', 'Déc'];
+
+    function init() {
+        // Create initial 3 days
+        for (let i = 0; i < 5; i++) {
+            addDay();
+        }
+        renderTimeLabels();
+        setupPinchToZoom();
+        setupInfiniteScroll();
+    }
+
+    function addDay() {
+        const date = new Date();
+        date.setDate(date.getDate() + daysCount);
+        
+        const dayId = daysCount;
+        daysCount++;
+
+        // Tab
+        const tab = document.createElement('div');
+        tab.className = 'date-tab';
+        tab.id = `tab-${dayId}`;
+        tab.innerHTML = `${daysNames[(date.getDay() + 6) % 7]} ${date.getDate()} ${monthsNames[date.getMonth()]}`;
+        tab.onclick = () => scrollToDay(dayId);
+        dateTabs.appendChild(tab);
+
+        // Column
+        const column = document.createElement('div');
+        column.className = 'day-column';
+        column.id = `col-${dayId}`;
+        
+        const slots = [];
+        for (let m = 0; m < MINUTES_IN_DAY; m += 15) {
+            const slot = document.createElement('div');
+            slot.className = `slot ${m % 60 === 0 ? 'hour-mark' : ''}`;
+            slot.style.height = `${slotHeight}px`;
+            
+            const timeStr = `${Math.floor(m/60).toString().padStart(2,'0')}:${(m%60).toString().padStart(2,'0')}`;
+            
+            const label = document.createElement('span');
+            label.className = 'slot-label-inner';
+            label.textContent = timeStr;
+            slot.appendChild(label);
+
+            slot.onclick = () => selectSlot(dayId, m, slot, timeStr, date);
+            column.appendChild(slot);
+            slots.push({ m, el: slot });
+        }
+        
+        daysGrid.appendChild(column);
+        timelineData.push({ dayId, date, column, slots });
+        updateLabelsVisibility();
+    }
+
+    function renderTimeLabels() {
+        timeLabels.innerHTML = '';
+        for (let h = 0; h < 24; h++) {
+            const label = document.createElement('div');
+            label.className = 'time-label';
+            label.style.height = `${slotHeight * 4}px`;
+            label.textContent = `${h}:00`;
+            timeLabels.appendChild(label);
+        }
+    }
+
+    function selectSlot(dayId, minute, slotEl, timeStr, date) {
+        if (slotEl.classList.contains('blocked')) return;
+
+        // Reset previous blocked slots (simulation of 75min buffer)
+        document.querySelectorAll('.slot.blocked').forEach(s => s.classList.remove('blocked'));
+        
+        // Block next 75 mins (5 slots of 15 mins)
+        let currentMinute = minute;
+        let dayIdx = dayId;
+        for (let i = 0; i < 5; i++) {
+            const targetMinute = minute + (i * 15);
+            // This is simplified: only blocks in current day for demo
+            const targetSlot = timelineData[dayId].slots.find(s => s.m === targetMinute);
+            if (targetSlot && i > 0) targetSlot.el.classList.add('blocked');
+        }
+
+        // Position Overlay
+        const colRect = timelineData[dayId].column.getBoundingClientRect();
+        const gridRect = daysGrid.getBoundingClientRect();
+        const slotRect = slotEl.getBoundingClientRect();
+        
+        selectionOverlay.style.display = 'flex';
+        selectionOverlay.style.height = `${slotHeight * 2}px`; // selection is 30 mins wide in mockup?
+        selectionOverlay.style.top = `${slotEl.offsetTop}px`;
+        selectionOverlay.style.left = `${timelineData[dayId].column.offsetLeft + 5}px`;
+        selectionOverlay.style.width = `${colRect.width - 10}px`;
+        overlayTime.textContent = timeStr;
+
+        // Bottom Sheet
+        selectedSlot = { date, timeStr };
+        const dStr = `${date.getDate().toString().padStart(2,'0')}/${(date.getMonth()+1).toString().padStart(2,'0')}/${date.getFullYear()}`;
+        selectedInfoText.textContent = `${dStr} — ${timeStr}`;
+        bottomSheet.classList.add('visible');
+        
+        if (window.navigator.vibrate) window.navigator.vibrate(10);
+    }
+
+    function scrollToDay(dayId) {
+        const col = document.getElementById(`col-${dayId}`);
+        timelineContainer.scrollTo({ left: col.offsetLeft, behavior: 'smooth' });
+    }
+
+    function setupInfiniteScroll() {
+        timelineContainer.addEventListener('scroll', () => {
+            // Highlight active tab
+            const scrollLeft = timelineContainer.scrollLeft;
+            const activeIdx = Math.round(scrollLeft / 250);
+            document.querySelectorAll('.date-tab').forEach((t, i) => {
+                t.classList.toggle('active', i === activeIdx);
+            });
+
+            // Load more days
+            if (timelineContainer.scrollLeft + timelineContainer.clientWidth >= timelineContainer.scrollWidth - 100) {
+                addDay();
+            }
+        });
+    }
+
+    function setupPinchToZoom() {
+        let initialDist = null;
+        daysGrid.addEventListener('touchmove', (e) => {
+            if (e.touches.length === 2) {
+                const dist = Math.hypot(e.touches[0].pageX - e.touches[1].pageX, e.touches[0].pageY - e.touches[1].pageY);
+                if (!initialDist) {
+                    initialDist = dist;
+                    return;
+                }
+                const scale = dist / initialDist;
+                if (scale > 1.2 && zoomLevel < 4) {
+                    zoomLevel++;
+                    updateZoom();
+                    initialDist = dist;
+                } else if (scale < 0.8 && zoomLevel > 1) {
+                    zoomLevel--;
+                    updateZoom();
+                    initialDist = dist;
+                }
+            }
+        });
+        daysGrid.addEventListener('touchend', () => { initialDist = null; });
+    }
+
+    function updateZoom() {
+        slotHeight = 15 * zoomLevel;
+        document.querySelectorAll('.slot').forEach(s => s.style.height = `${slotHeight}px`);
+        document.querySelectorAll('.time-label').forEach(l => l.style.height = `${slotHeight * 4}px`);
+        
+        // Reposition overlay if active
+        if (selectionOverlay.style.display === 'flex') {
+            const activeSlot = document.querySelector('.slot.selected'); // would need tracking
+            // For demo simplicity, just hide overlay on zoom
+            selectionOverlay.style.display = 'none';
+            bottomSheet.classList.remove('visible');
+        }
+        updateLabelsVisibility();
+    }
+
+    function updateLabelsVisibility() {
+        document.querySelectorAll('.slot').forEach(slot => {
+            const m = parseInt(slot.querySelector('.slot-label-inner').textContent.split(':')[1]);
+            const h = parseInt(slot.querySelector('.slot-label-inner').textContent.split(':')[0]);
+            
+            let show = false;
+            if (zoomLevel === 1) show = (m === 0);
+            if (zoomLevel === 2) show = (m === 0 || m === 30);
+            if (zoomLevel >= 3) show = true;
+            
+            if (show) slot.classList.add('show-label');
+            else slot.classList.remove('show-label');
+        });
+    }
+
+    btnValidate.onclick = () => {
+        const message = `Bonjour,\nJe souhaite réserver le créneau du ${selectedInfoText.textContent}.\nMerci ✨`;
+        window.location.href = `https://wa.me/33605656753?text=${encodeURIComponent(message)}`;
+    };
+
+    init();
+</script>
+
+</body>
+</html>
