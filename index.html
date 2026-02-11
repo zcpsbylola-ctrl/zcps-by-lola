@@ -36,7 +36,6 @@
             flex-direction: column;
         }
 
-        /* Header */
         header {
             padding: 30px 20px 15px;
             text-align: center;
@@ -55,7 +54,6 @@
 
         header h1 span { font-weight: 700; }
 
-        /* Fixed Date Tabs Container */
         .date-tabs-outer {
             background: rgba(255, 255, 255, 0.95);
             margin: 0 10px;
@@ -73,7 +71,7 @@
         .date-tabs::-webkit-scrollbar { display: none; }
 
         .date-tab {
-            flex: 0 0 33.33%; /* Show 3 days */
+            flex: 0 0 33.33%;
             padding: 12px 5px;
             text-align: center;
             color: #5a5a8a;
@@ -89,7 +87,6 @@
             color: white;
         }
 
-        /* Scrollable Area */
         .main-scroll-area {
             flex: 1;
             display: flex;
@@ -99,7 +96,6 @@
             position: relative;
         }
 
-        /* Time Labels (Fixed Left) */
         .time-column {
             width: 50px;
             flex-shrink: 0;
@@ -107,11 +103,6 @@
             z-index: 80;
             border-right: 1px solid rgba(255, 255, 255, 0.1);
             overflow: hidden;
-        }
-
-        .time-labels-inner {
-            display: flex;
-            flex-direction: column;
         }
 
         .time-label {
@@ -124,7 +115,6 @@
             border-bottom: 1px dashed rgba(255, 255, 255, 0.05);
         }
 
-        /* Days Grid (Scrollable Horizontal & Vertical) */
         .grid-viewport {
             flex: 1;
             overflow: auto;
@@ -142,7 +132,7 @@
         }
 
         .day-column {
-            width: calc((100vw - 70px) / 1); /* Full width minus time col and margins */
+            width: calc(100vw - 70px);
             border-right: 1px solid rgba(255, 255, 255, 0.1);
             position: relative;
             background: var(--column-bg);
@@ -182,7 +172,6 @@
         }
         .show-label .slot-label-inner { opacity: 1; }
 
-        /* Selection Overlay */
         .selection-overlay {
             position: absolute;
             left: 4px;
@@ -205,7 +194,6 @@
             text-shadow: 0 1px 2px rgba(0,0,0,0.3);
         }
 
-        /* Bottom Sheet */
         .bottom-sheet {
             position: fixed;
             bottom: 20px;
@@ -290,22 +278,21 @@
     const selectedInfoText = document.getElementById('selectedInfoText');
     const btnValidate = document.getElementById('btnValidate');
 
-    let zoomLevel = 1;
     let slotHeight = 20;
     let daysCount = 0;
     let timelineData = [];
+    let selectedSlotData = null;
 
     const daysNames = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'];
     const monthsNames = ['Jan', 'Fév', 'Mar', 'Avr', 'Mai', 'Juin', 'Juil', 'Août', 'Sep', 'Oct', 'Nov', 'Déc'];
 
     function init() {
-        for (let i = 0; i < 5; i++) addDay();
+        for (let i = 0; i < 30; i++) addDay(); // 30 days like V3
         renderTimeLabels();
         setupInfiniteScroll();
         setupSyncScroll();
-        setupPinchToZoom();
         
-        // Initial scroll to 08:00
+        // Scroll to 08:00
         gridViewport.scrollTop = slotHeight * 4 * 8;
     }
 
@@ -314,7 +301,6 @@
         date.setDate(date.getDate() + daysCount);
         const dayId = daysCount++;
 
-        // Tab
         const tab = document.createElement('div');
         tab.className = 'date-tab';
         tab.id = `tab-${dayId}`;
@@ -325,15 +311,16 @@
         };
         dateTabs.appendChild(tab);
 
-        // Column
         const column = document.createElement('div');
         column.className = 'day-column';
         column.id = `col-${dayId}`;
         
         const slots = [];
-        for (let m = 0; m < MINUTES_IN_DAY; m += 15) {
+        for (let m = 0; m < MINUTES_IN_DAY; m += 1) { // 1 min granularity
+            const isLabel = m % 15 === 0;
             const slot = document.createElement('div');
             slot.className = `slot ${m % 60 === 0 ? 'hour-mark' : ''}`;
+            if (isLabel) slot.classList.add('show-label');
             
             const timeStr = `${Math.floor(m/60).toString().padStart(2,'0')}:${(m%60).toString().padStart(2,'0')}`;
             const label = document.createElement('span');
@@ -348,7 +335,6 @@
         
         daysContainer.appendChild(column);
         timelineData.push({ dayId, date, column, slots });
-        updateLabelsVisibility();
     }
 
     function renderTimeLabels() {
@@ -364,15 +350,16 @@
     function selectSlot(dayId, minute, slotEl, timeStr, date) {
         if (slotEl.classList.contains('blocked')) return;
 
+        // V3 Logic: 20min selection + 75min buffer = 95min total block
         document.querySelectorAll('.slot.blocked').forEach(s => s.classList.remove('blocked'));
-        for (let i = 1; i < 5; i++) {
-            const targetMinute = minute + (i * 15);
+        for (let i = 1; i < 95; i++) {
+            const targetMinute = minute + i;
             const targetSlot = timelineData[dayId].slots.find(s => s.m === targetMinute);
             if (targetSlot) targetSlot.el.classList.add('blocked');
         }
 
         selectionOverlay.style.display = 'flex';
-        selectionOverlay.style.height = `${slotHeight * 2}px`;
+        selectionOverlay.style.height = `${slotHeight * 20}px`; // 20 min selection visual
         selectionOverlay.style.top = `${slotEl.offsetTop}px`;
         selectionOverlay.style.left = `${timelineData[dayId].column.offsetLeft + 4}px`;
         selectionOverlay.style.width = `${timelineData[dayId].column.offsetWidth - 8}px`;
@@ -380,18 +367,13 @@
 
         const dStr = `${date.getDate().toString().padStart(2,'0')}/${(date.getMonth()+1).toString().padStart(2,'0')}/${date.getFullYear()}`;
         selectedInfoText.textContent = `${dStr} — ${timeStr}`;
+        selectedSlotData = { day: dayId + 1, time: timeStr };
         bottomSheet.classList.add('visible');
         if (window.navigator.vibrate) window.navigator.vibrate(10);
     }
 
     function setupInfiniteScroll() {
         gridViewport.addEventListener('scroll', () => {
-            // Horizontal Infinite
-            if (gridViewport.scrollLeft + gridViewport.clientWidth >= gridViewport.scrollWidth - 50) {
-                addDay();
-            }
-
-            // Update Tabs Active State & Scroll
             const colWidth = timelineData[0].column.offsetWidth;
             const activeIdx = Math.round(gridViewport.scrollLeft / colWidth);
             
@@ -410,52 +392,19 @@
     }
 
     function setupSyncScroll() {
-        // Sync vertical scroll of time column with grid
         gridViewport.addEventListener('scroll', () => {
             timeLabels.parentElement.scrollTop = gridViewport.scrollTop;
         });
     }
 
-    function setupPinchToZoom() {
-        let initialDist = null;
-        gridViewport.addEventListener('touchmove', (e) => {
-            if (e.touches.length === 2) {
-                const dist = Math.hypot(e.touches[0].pageX - e.touches[1].pageX, e.touches[0].pageY - e.touches[1].pageY);
-                if (!initialDist) { initialDist = dist; return; }
-                const scale = dist / initialDist;
-                if (scale > 1.3 && zoomLevel < 4) { zoomLevel++; updateZoom(); initialDist = dist; }
-                else if (scale < 0.7 && zoomLevel > 1) { zoomLevel--; updateZoom(); initialDist = dist; }
-            }
-        });
-        gridViewport.addEventListener('touchend', () => { initialDist = null; });
-    }
-
-    function updateZoom() {
-        const baseH = 20;
-        slotHeight = baseH * zoomLevel;
-        document.documentElement.style.setProperty('--slot-height', `${slotHeight}px`);
-        
-        // Hide overlay on zoom to avoid misplacement
-        selectionOverlay.style.display = 'none';
-        bottomSheet.classList.remove('visible');
-        updateLabelsVisibility();
-    }
-
-    function updateLabelsVisibility() {
-        document.querySelectorAll('.slot').forEach(slot => {
-            const time = slot.querySelector('.slot-label-inner').textContent.split(':');
-            const m = parseInt(time[1]);
-            let show = false;
-            if (zoomLevel === 1) show = (m === 0);
-            if (zoomLevel === 2) show = (m === 0 || m === 30);
-            if (zoomLevel >= 3) show = true;
-            if (show) slot.classList.add('show-label');
-            else slot.classList.remove('show-label');
-        });
-    }
-
     btnValidate.onclick = () => {
-        const message = `Bonjour,\nJe souhaite réserver le créneau du ${selectedInfoText.textContent}.\nMerci ✨`;
+        const message = `Bonjour,
+Je confirme ma réservation :
+
+📅 Jour ${selectedSlotData.day}
+🕒 ${selectedSlotData.time}
+
+Merci 🙏`;
         window.location.href = `https://wa.me/33605656753?text=${encodeURIComponent(message)}`;
     };
 
